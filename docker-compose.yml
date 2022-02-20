@@ -1,0 +1,74 @@
+version: "2.2"
+x-redash-service: &redash-service
+  image:
+    redash/redash:latest
+  env_file:
+    "redash.env"
+services:
+  server:
+    <<: *redash-service
+    command: server
+    depends_on:
+      - redis
+    ports:
+      - "5002:5000"
+      - "5678:5678"
+    environment:
+      REDASH_WEB_WORKERS: 4
+    networks:
+      redash-demo:
+  scheduler:
+    <<: *redash-service
+    command: scheduler
+    environment:
+      QUEUES: "celery"
+      WORKERS_COUNT: 1
+    networks:
+      redash-demo:
+  scheduled_worker:
+    <<: *redash-service
+    command: worker
+    environment:
+      QUEUES: "scheduled_queries"
+      WORKERS_COUNT: 1
+    networks:
+      redash-demo:
+  adhoc_worker:
+    <<: *redash-service
+    command: worker
+    environment:
+      QUEUES: "queries,schemas"
+      WORKERS_COUNT: 2
+    networks:
+      redash-demo:
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    networks:
+      redash-demo:
+    depends_on:
+      - postgres-redash
+  nginx:
+    image: nginx:latest
+    ports:
+      - "5001:80"
+    depends_on:
+      - server
+    links:
+      - server:redash
+    restart: always
+    networks:
+      redash-demo:
+  postgres-redash:
+    image: postgres:13.5
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    networks:
+      redash-demo:
+    volumes:
+      - ./sql/create_demo_db.sql:/docker-entrypoint-initdb.d/create_demo_db.sql
+
+networks:
+  redash-demo:
+
