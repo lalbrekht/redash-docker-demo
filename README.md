@@ -27,5 +27,3 @@ Then open in browser:
 http://localhost:5002
 ```
 
-## How-to start
-
